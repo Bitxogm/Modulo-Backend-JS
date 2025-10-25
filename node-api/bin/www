@@ -1,0 +1,16 @@
+import http from 'node:http';
+import app from '../app.js';
+
+
+const PORT = process.env.PORT || 3000;
+// Entorno de ejecucion
+const env = process.env.NODE_ENV || 'development';
+
+// Separar la creacion del servidor
+const server = http.createServer(app);
+
+server.listen(PORT, () => {
+  console.log(`✅[${env.toUpperCase( )}] Server Ready on http://localhost:${PORT}`);
+  console.log(`☠️  Press CTRL + C to Stop Server`)
+});
+

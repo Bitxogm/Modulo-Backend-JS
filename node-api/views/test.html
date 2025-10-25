@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="./styles/styles.css">
+  <title>Keepcoding Web Bootcamp XIX</title>
+</head>
+
+<body>
+  <h1>Server Node.js Desde Home.html</h1>
+  <p>Author: Bitxo & Obama</p>
+  <p> Enviroment: <%= env %> & Date: <%= now %>
+  </p>
+  <p>Language: <%= lang %> & System: <%= system %>
+  </p>
+  <ul>
+    <% for (let i=0; i < 5; i++) { %>
+      <li>Elemento <%= i +1 %>
+      </li>
+      <% } %>
+  </ul>
+
+  <%- include('./_footer.html') %>
+
+</body>
+
+</html>
