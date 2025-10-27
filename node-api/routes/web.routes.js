@@ -23,6 +23,7 @@ router.get('/about', (req, res, next) => {
 });
 
 router.get('/', (req, res, next) => {
+  console.table(req.headers)
   res.render('home.html', {
     title: 'Otaku & KeepCoding Web Bootcamp XIX',
     message: 'We\ re comigng soon..',
@@ -53,7 +54,14 @@ router.get('/comming-soon', (req, res, next) => {
   });
 });
 
-router.get('/forzar-error', (req, res, next) => {
+router.get('error_1', (req, res, next) => {
+  res.render('error_1.html', {
+    title: 'Página de Error 1',
+    message: 'Esta es una página de error de ejemplo.',
+  });
+});
+
+router.get('/error500', (req, res, next) => {
   const err = new Error('Error forzado para probar el middleware de errores');
   err.status = 500;
   next(err);

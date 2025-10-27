@@ -32,7 +32,9 @@
 
 <body>
 
-
+  <% if (env==='development' ) { %>
+        <%- include('./_enviroment.html') %>
+            <% } %>
     <!-- HERO -->
     <div class="hero">
 

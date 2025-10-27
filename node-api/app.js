@@ -8,8 +8,11 @@ import { serverErrorHandler, notFoundErrorHandler } from './lib/middlewares/erro
 
 // Routes
 import { router } from './routes/web.routes.js';
+import {  router as apiRouter }  from './routes/api.routes.js';
+import { router as  todosRouter} from './routes/todos.routes.js';
 
 const app = express();
+app.use(express.json());
 
 app.use(express.static('public'));
 app.set('view engine', 'ejs');
@@ -41,6 +44,10 @@ app.use( filterAdminPath);
 
 // ROUTES
 app.use('/', router);
+app.use('/api', apiRouter);
+
+// Todos Routes
+
 
 // Error Handlers
 app.use(serverErrorHandler);

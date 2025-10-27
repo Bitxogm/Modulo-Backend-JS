@@ -5,6 +5,11 @@
    <title>
         <%= title %>
     </title>
+    <body>
+          <% if (env==='development' ) { %>
+        <%- include('./_enviroment.html') %>
+            <% } %>
+
 </head>
 <div class="container">
     <div class="error">
