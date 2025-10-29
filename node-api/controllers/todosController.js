@@ -1,102 +1,183 @@
+import { matchedData } from 'express-validator';
 import { todos } from '../data/Todos.js';
-import { matchedData, validationResult } from 'express-validator';
 
-
+//Importaer conexion a la base de datos
+import { getDB } from '../lib/connectMongo.js';
 export const todoController = {
 
-  getAllTodos: (req, res, next) => {
-    let retTodos = todos;
+  /**
+   * GET /todos
+   * Query params: completed, userId, limit, skip
+   */
+  getAllTodos: async (req, res) => {
+    // ✅ Ya no necesitas validar errores aquí
+    // El middleware validarResultados ya lo hizo
 
-    const result = validationResult(req);
     const data = matchedData(req);
-    console.log({ result, data });
-    if (result.errors.length > 0) {
-      return res.status(400).json({
-        errors: result.errors
-      });
-    }
+    const filter = {}
+    console.log('Query params validados:', data);
 
+    let retTodos = [...todos]; // Copia para no mutar el original
+
+
+    // Filtrar por completed
     if (data.completed !== undefined) {
-      retTodos = retTodos.filter(t => t.completed === data.completed)
+      filter.completed = data.completed;
+      // { completed : true || false}
+      retTodos = retTodos.filter(t => t.completed === data.completed);
     }
 
+    // Filtrar por userId
     if (data.userId !== undefined) {
-      retTodos = retTodos.filter(t => t.userId === userId);
+      // {userId: data.userId}
+      filter.userId = data.userId;
+      retTodos = retTodos.filter(t => t.userId === data.userId);
     }
-    // Skip & Limit
-    if (data.limit || data.skip) {
-      const limit = data.limit;
-      const skip = data.skip || 0; //Si no llega un skip, lo ponemos en 0.
 
-      retTodos = retTodos.slice(skip, isNaN(limit) ? undefined : skip + limit);
-    }
-    res.status(200).json(retTodos)
+    // Aplicar skip y limit
+    // if (data.skip !== undefined || data.limit !== undefined) {
+    //   const skip = data.skip || 0;
+    //   const end = data.limit ? skip + data.limit : undefined;
+    //   retTodos = retTodos.slice(skip, end);
+    // }
+
+    //Otener de db
+    const db = await getDB();
+    const todosDB = await db.collection('todos')
+      .find(filter)
+      .skip(data.skip || 0)
+      .limit(data.limit || 100)
+      .toArray();
+    console.log({ filter, todosDB })
+
+
+    res.status(200).json({
+      success: true,
+      count: retTodos.length,
+      data: todosDB
+    });
   },
 
-  getOneById: (req, res, next) => {
-
-    const result = validationResult(req);
+  /**
+   * GET /todos/:id
+   * Param: id
+   */
+  getOneById: (req, res) => {
     const data = matchedData(req);
-    console.log({ data, result });
-       if ( result.errors.length > 0 ) {
-            return res.status(400).json({
-                errors: result.errors
-            });
-        }
+    console.log('ID validado:', data);
 
     const todo = todos.find(t => t.id === data.id);
+
     if (!todo) {
-      return next();
-    }
-    res.status(200).json(todo);
-  },
-
-  add: (req, res, next) => {
-
-    const lastId = todos.toSorted((a, b) => b.id - a.id)[0].id;
-    const nextId = lastId + 1;
-
-    if (!req.body.todo || !req.body.userId) {
-      return res.status(400).json({
-        error: 'UserId and todo values are required',
+      return res.status(404).json({
+        success: false,  // ✅ Corregido el typo
+        message: 'Todo not found'
       });
     }
+
+    res.status(200).json({
+      success: true,
+      data: todo
+    });
+  },
+
+  /**
+   * POST /todos
+   * Body: todo, userId, completed (opcional)
+   */
+  add: (req, res) => {
+    const data = matchedData(req);
+    console.log('Datos validados:', data);
+
+    // Calcular siguiente ID
+    const lastId = todos.length > 0
+      ? Math.max(...todos.map(t => t.id))
+      : 0;
+    const nextId = lastId + 1;
+
+    // ✅ Usar data en lugar de req.body
     const newTodo = {
       id: nextId,
-      todo: req.body.todo,
-      completed: req.body.completed || false,
-      userId: req.body.userId
+      todo: data.todo,              // ✅ Corregido
+      completed: data.completed || false,
+      userId: data.userId
     };
+
     todos.push(newTodo);
-    res.status(201).json(
-      newTodo
-    );
+
+    res.status(201).json({
+      success: true,
+      message: 'Todo creado con éxito',
+      data: newTodo
+    });
   },
 
-  update: (req, res, next) => {
-    const id = parseInt(req.params.id);
-    const todoIndex = todos.findIndex(t => t.id === id);
-    if (isNaN(id) || todoIndex === -1) {
-      return next();
+  /**
+   * PUT /todos/:id
+   * Param: id
+   * Body: todo, completed, userId (todos opcionales)
+   */
+  update: (req, res) => {
+    const data = matchedData(req);
+    console.log('Datos validados:', data);
+
+    // Buscar todo
+    const todoIndex = todos.findIndex(t => t.id === data.id);
+
+    if (todoIndex === -1) {
+      return res.status(404).json({
+        success: false,  // ✅ Corregido el typo
+        message: 'Todo no encontrado'
+      });
     }
+
+    // ✅ Actualizar SOLO los campos que se enviaron
     const updatedTodo = {
-      id: todos[todoIndex].id,
-      todo: req.body.todo,
-      completed: req.body.completed || false,
-      userId: req.body.userId
+      ...todos[todoIndex],  // Mantener datos existentes
+      // Solo actualizar si el campo existe en data
+      ...(data.todo !== undefined && { todo: data.todo }),
+      ...(data.completed !== undefined && { completed: data.completed }),
+      ...(data.userId !== undefined && { userId: data.userId })
     };
-    todos[findIndex] = updatedTodo;
-    res.status(200).json(updatedTodo);
+
+    todos[todoIndex] = updatedTodo;
+
+    res.status(200).json({
+      success: true,  // ✅ Corregido el typo
+      message: 'Todo actualizado con éxito',
+      data: updatedTodo
+    });
   },
 
-  delete: (req, res, next) => {
-    const id = parseInt(req.params.id);
-    const todoIndex = todos.findIndex(t => t.id === id);
-    if (isNaN(id) || todoIndex === -1) {
-      return next();
+  /**
+   * DELETE /todos/:id
+   * Param: id
+   */
+  delete: (req, res) => {
+    const data = matchedData(req);
+    console.log('ID validado:', data);
+
+    // Buscar todo
+    const todoIndex = todos.findIndex(t => t.id === data.id);
+
+    if (todoIndex === -1) {
+      return res.status(404).json({
+        success: false,  // ✅ Corregido el typo
+        message: 'Todo no encontrado'
+      });
     }
+
+    // Guardar el todo antes de eliminar (para la respuesta)
+    const deletedTodo = todos[todoIndex];
+
+    // Eliminar
     todos.splice(todoIndex, 1);
-    res.status(200).end();
+
+    res.status(200).json({
+      success: true,
+      message: 'Todo eliminado con éxito',
+      data: deletedTodo
+    });
   }
 
 };

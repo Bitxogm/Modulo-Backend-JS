@@ -1,4 +1,6 @@
+import { User } from '../models/User.js';
 import users from '../users.json' with {type: 'json'};
+import {hash} from 'bcrypt'
 
 export const userController = {
 
@@ -60,9 +62,30 @@ export const userController = {
     res.status(200).json(user);
   },
 
-  add: (req, res, next) => {
-    console.log(req.body);
-    res.end();
+  add: async (req, res, next) => {
+    const userData = req.body;
+    const user = new User({
+      email: req.body.email,
+      // password: req.body.password
+    });
+
+    user.password = await User.hashPassword(req.body.password)
+    
+    try {
+
+      const savedUser = await user.save();
+      savedUser.password = undefined
+      res.status(201).json(savedUser);
+    } catch (error) {
+      if(error.code && error.code === 11000){
+        return res.status(400).json({message: 'El email ya existe'})
+      } else {
+        res.status(500).json({message: 'Internal Server Error'})
+      }
+      
+    }
+    console.log(user)
+    res.end()
   },
 
 
