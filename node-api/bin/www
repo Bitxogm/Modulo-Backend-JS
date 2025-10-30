@@ -5,7 +5,8 @@ import app from '../app.js';
 
 // Importar funciones de conexión
 import { connectDB } from '../lib/connectMongo.js';
-// import { connectMongoose } from '../lib/connectMongoose.js';  // Para más adelante
+import { connectMongoose } from '../lib/connectMongoose.js';  // Para más adelante
+// import { connection } from 'mongoose';
 
 dotenv.config();
 
@@ -17,12 +18,13 @@ const startServer = async () => {
     console.log('🔄 Starting application...');
     
     // 1️⃣ Conectar a MongoDB (driver nativo)
-    console.log('🔌 Connecting to MongoDB...');
+    console.log(`🔌 Connecting to MongoDB... `);
     await connectDB();
     
     // 2️⃣ (Opcional) Conectar Mongoose - comentado por ahora
-    // console.log('🔌 Connecting to Mongoose...');
-    // await connectMongoose();
+    console.log(`🔌 Connecting to Mongoose...`);
+    await connectMongoose();
+    console.log(`✅ Mongoose Connected`);
     
     // 3️⃣ Crear servidor
     // 4️⃣ Arrancar servidor

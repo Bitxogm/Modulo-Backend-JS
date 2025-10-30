@@ -48,9 +48,11 @@ router.get('/todos',
  */
 router.get('/todos/:id',
   param('id', 'Invalid ID')
-    .isInt({ min: 1 })
-    .withMessage('ID must be a positive number')
-    .toInt(),
+    .isString()
+    .isLength({ min: 24, max: 24 })
+    .withMessage('ID must be 24 characters')
+    .matches(/^[a-f0-9]{24}$/i)
+    .withMessage('ID must be a valid MongoDB ObjectId'),
 
   validarResultados,
   todoController.getOneById
@@ -70,7 +72,7 @@ router.post('/todos',
 
   body('userId', 'User ID is required')
     .notEmpty()
-    .bail()  // ✅ Detiene si falla
+    .bail()
     .isInt({ min: 1 })
     .withMessage('User ID must be a positive number')
     .toInt(),
@@ -90,15 +92,16 @@ router.post('/todos',
  * Body: { todo?, completed?, userId? }
  */
 router.put('/todos/:id',
-  param('id', 'Invalid ID')
-    .isInt({ min: 1 })
-    .withMessage('ID must be a positive number')
-    .toInt(),
+  // Validar ID en URL
+  param('id', 'Invalid MongoDB ObjectId')
+    .isMongoId()
+    .withMessage('Must be a valid MongoDB ObjectId'),
 
+  // Validar body (todos opcionales)
   body('todo')
     .optional()
     .trim()
-    .bail()  // ✅ Detiene si falla
+    .bail()
     .isLength({ min: 3, max: 100 })
     .withMessage('Todo must be between 3 and 100 characters'),
 
@@ -114,15 +117,16 @@ router.put('/todos/:id',
     .withMessage('User ID must be a positive number')
     .toInt(),
 
+  // Validar que al menos un campo esté presente
   body()
-    .custom((_value, { req }) => {
-      const hasField = 
-        req.body.todo !== undefined || 
-        req.body.completed !== undefined || 
+    .custom((value, { req }) => {
+      const hasField =
+        req.body.todo !== undefined ||
+        req.body.completed !== undefined ||
         req.body.userId !== undefined;
-      
+
       if (!hasField) {
-        throw new Error('At least one field must be provided');
+        throw new Error('At least one field (todo, completed, userId) must be provided');
       }
       return true;
     }),
@@ -130,7 +134,6 @@ router.put('/todos/:id',
   validarResultados,
   todoController.update
 );
-
 /**
  * DELETE /todos/:id
  * Param: id
@@ -161,28 +164,60 @@ router.get('/users/:id',
 );
 
 router.post('/users',
+  // Validar name
   body('name', 'Name is required')
     .notEmpty()
     .bail()
     .trim()
     .isLength({ min: 2, max: 100 })
     .withMessage('Name must be between 2 and 100 characters'),
-  
-  body('email', 'Email is required')
+
+  // Validar email
+  body('email', 'Valid email is required')
     .notEmpty()
     .bail()
     .isEmail()
     .withMessage('Must be a valid email')
     .normalizeEmail(),
-  
+
+  // ✅ Validar password (esto faltaba)
+  body('password', 'Password is required')
+    .notEmpty()
+    .bail()
+    .isLength({ min: 6 })
+    .withMessage('Password must be at least 6 characters'),
+
   validarResultados,
   userController.add
 );
-
 // ============================================
 // AGENTS
 // ============================================
 
+/**
+ * AGENTS routes
+ *
+ * Routes for managing agents; controller implementations should live in
+ * ../controllers/agentController.js — this file only defines the routes and validations.
+ */
+
+// GET /agents
+router.get('/agents',
+  validarResultados,
+  agentController.getAll
+);
+
+// GET /agents/:id
+router.get('/agents/:id',
+  param('id', 'Invalid agent ID')
+    .isMongoId()
+    .withMessage('Must be a valid MongoDB ObjectId'),
+
+  validarResultados,
+  agentController.getOneById
+);
+
+// POST /agents
 router.post('/agents',
   body('name', 'Name is required')
     .notEmpty()
@@ -190,14 +225,71 @@ router.post('/agents',
     .trim()
     .isLength({ min: 2, max: 100 })
     .withMessage('Name must be between 2 and 100 characters'),
-  
-  body('email', 'Email is required')
+
+  body('email', 'Valid email is required')
     .notEmpty()
     .bail()
     .isEmail()
     .withMessage('Must be a valid email')
     .normalizeEmail(),
-  
+
+  body('age', 'Age must be a non-negative integer')
+    .optional()
+    .isInt({ min: 0 })
+    .toInt(),
+
   validarResultados,
   agentController.add
+);
+
+// PUT /agents/:id
+router.put('/agents/:id',
+  param('id', 'Invalid agent ID')
+    .isMongoId()
+    .withMessage('Must be a valid MongoDB ObjectId'),
+
+  body('name')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Name must be between 2 and 100 characters'),
+
+  body('email')
+    .optional()
+    .isEmail()
+    .withMessage('Must be a valid email')
+    .normalizeEmail(),
+
+  body('age')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Age must be a non-negative integer')
+    .toInt(),
+
+  // Require at least one field to update
+  body()
+    .custom((value, { req }) => {
+      const hasField =
+        req.body.name !== undefined ||
+        req.body.email !== undefined ||
+        req.body.age !== undefined;
+
+      if (!hasField) {
+        throw new Error('At least one field (name, email, age) must be provided');
+      }
+      return true;
+    }),
+
+  validarResultados,
+  agentController.update
+);
+
+// DELETE /agents/:id
+router.delete('/agents/:id',
+  param('id', 'Invalid agent ID')
+    .isMongoId()
+    .withMessage('Must be a valid MongoDB ObjectId'),
+
+  validarResultados,
+  agentController.delete
 );

@@ -1,4 +1,5 @@
 import { matchedData } from 'express-validator';
+import { ObjectId } from 'mongodb';
 import { todos } from '../data/Todos.js';
 
 //Importaer conexion a la base de datos
@@ -18,7 +19,6 @@ export const todoController = {
     console.log('Query params validados:', data);
 
     let retTodos = [...todos]; // Copia para no mutar el original
-
 
     // Filtrar por completed
     if (data.completed !== undefined) {
@@ -50,7 +50,6 @@ export const todoController = {
       .toArray();
     console.log({ filter, todosDB })
 
-
     res.status(200).json({
       success: true,
       count: retTodos.length,
@@ -62,22 +61,43 @@ export const todoController = {
    * GET /todos/:id
    * Param: id
    */
-  getOneById: (req, res) => {
+  getOneById: async (req, res) => {
     const data = matchedData(req);
     console.log('ID validado:', data);
 
-    const todo = todos.find(t => t.id === data.id);
+    // ✅ Obtener base de datos
+    const db = getDB();
 
-    if (!todo) {
+    // ✅ Validar que el ID sea válido
+    if (!ObjectId.isValid(data.id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid ID format'
+      });
+    }
+    console.log('Buscando ID:', data.id);
+
+    // const todo = todos.find(t => t.id === data.id);
+
+    // ✅ Buscar en MongoDB
+    console.log('Id:', data.id)
+    const item = await db.collection('todos')
+      .findOne({
+        _id: ObjectId.createFromHexString(data.id),
+      });
+
+    if (!item) {
       return res.status(404).json({
         success: false,  // ✅ Corregido el typo
         message: 'Todo not found'
       });
     }
 
+    console.log('Todo encontrado:', item);
+
     res.status(200).json({
       success: true,
-      data: todo
+      data: item
     });
   },
 
@@ -85,31 +105,43 @@ export const todoController = {
    * POST /todos
    * Body: todo, userId, completed (opcional)
    */
-  add: (req, res) => {
-    const data = matchedData(req);
-    console.log('Datos validados:', data);
+  add: async (req, res) => {
 
-    // Calcular siguiente ID
-    const lastId = todos.length > 0
-      ? Math.max(...todos.map(t => t.id))
-      : 0;
-    const nextId = lastId + 1;
+    //TODO: migrara a mongo
+    try{
 
-    // ✅ Usar data en lugar de req.body
-    const newTodo = {
-      id: nextId,
-      todo: data.todo,              // ✅ Corregido
-      completed: data.completed || false,
-      userId: data.userId
-    };
-
-    todos.push(newTodo);
-
-    res.status(201).json({
-      success: true,
-      message: 'Todo creado con éxito',
-      data: newTodo
-    });
+      const data = matchedData(req);
+      console.log('Datos validados:', data);
+      
+      // ✅ Crear nuenvo todo
+      const newTodo = {
+        todo: data.todo,
+        userId: data.userId,
+        completed: data.completed || false,
+        createdAt: new Date(),
+      };
+      
+      // ✅ Obtener base de datos
+      const db = await getDB();
+      
+      // ✅ Guardar en mongodb
+      const result = await  db.collection('todos').insertOne(newTodo);
+      
+      res.status(201).json({
+        success: true,
+        message: 'Todo creado con éxito',
+        data: {
+          _id: result.insertId,
+          ...newTodo
+        }
+      });
+    }catch(error){
+      console.error('Error al crear todo:', error.message);
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
   },
 
   /**
@@ -117,67 +149,73 @@ export const todoController = {
    * Param: id
    * Body: todo, completed, userId (todos opcionales)
    */
-  update: (req, res) => {
+update: async (req, res) => {
+  try {
     const data = matchedData(req);
     console.log('Datos validados:', data);
 
-    // Buscar todo
-    const todoIndex = todos.findIndex(t => t.id === data.id);
+    // ✅ Construir objeto de actualización solo con campos proporcionados
+    const updateData = {};
+    
+    if (data.todo !== undefined) {
+      updateData.todo = data.todo;
+    }
+    
+    if (data.completed !== undefined) {
+      updateData.completed = data.completed;
+    }
+    
+    if (data.userId !== undefined) {
+      updateData.userId = data.userId;
+    }
+    
+    // Añadir fecha de actualización
+    updateData.updatedAt = new Date();
 
-    if (todoIndex === -1) {
+    console.log('Campos a actualizar:', updateData);
+
+    // ✅ Actualizar en MongoDB usando findOneAndUpdate
+    const result = await db.collection('todos').findOneAndUpdate(
+      { _id: new ObjectId(data.id) },  // ✅ Buscar por _id
+      { $set: updateData },            // ✅ Actualizar campos
+      { returnDocument: 'after' }      // ✅ Retornar documento actualizado
+    );
+
+    // ✅ Verificar si se encontró el documento
+    if (!result) {
       return res.status(404).json({
-        success: false,  // ✅ Corregido el typo
+        success: false,
         message: 'Todo no encontrado'
       });
     }
 
-    // ✅ Actualizar SOLO los campos que se enviaron
-    const updatedTodo = {
-      ...todos[todoIndex],  // Mantener datos existentes
-      // Solo actualizar si el campo existe en data
-      ...(data.todo !== undefined && { todo: data.todo }),
-      ...(data.completed !== undefined && { completed: data.completed }),
-      ...(data.userId !== undefined && { userId: data.userId })
-    };
-
-    todos[todoIndex] = updatedTodo;
+    console.log('✅ Todo actualizado:', result._id);
 
     res.status(200).json({
-      success: true,  // ✅ Corregido el typo
+      success: true,
       message: 'Todo actualizado con éxito',
-      data: updatedTodo
+      data: result
     });
-  },
+
+  } catch (error) {
+    console.error('[ERROR] update:', error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+},
 
   /**
    * DELETE /todos/:id
    * Param: id
    */
-  delete: (req, res) => {
-    const data = matchedData(req);
-    console.log('ID validado:', data);
+delete: (req, res) => {
+ param('id', 'Invalid MongoDB ObjectId')
+    .isMongoId()
+    .withMessage('Must be a valid MongoDB ObjectId'),
 
-    // Buscar todo
-    const todoIndex = todos.findIndex(t => t.id === data.id);
-
-    if (todoIndex === -1) {
-      return res.status(404).json({
-        success: false,  // ✅ Corregido el typo
-        message: 'Todo no encontrado'
-      });
-    }
-
-    // Guardar el todo antes de eliminar (para la respuesta)
-    const deletedTodo = todos[todoIndex];
-
-    // Eliminar
-    todos.splice(todoIndex, 1);
-
-    res.status(200).json({
-      success: true,
-      message: 'Todo eliminado con éxito',
-      data: deletedTodo
-    });
-  }
-
+  validarResultados,
+  todoController.delete
+},
 };
