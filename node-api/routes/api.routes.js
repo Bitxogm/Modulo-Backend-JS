@@ -184,9 +184,9 @@ router.post('/users',
   body('password', 'Password is required')
     .notEmpty()
     .bail()
-    .isLength({ min: 6 })
-    .withMessage('Password must be at least 6 characters'),
-
+    .isLength({ min: 8 })
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]/)
+    .withMessage('Password must contain: uppercase, lowercase, number, and special character'),
   validarResultados,
   userController.add
 );
@@ -233,10 +233,18 @@ router.post('/agents',
     .withMessage('Must be a valid email')
     .normalizeEmail(),
 
-  body('age', 'Age must be a non-negative integer')
-    .optional()
-    .isInt({ min: 0 })
+  body('age', 'Age is required')
+    .notEmpty()
+    .bail()
+    .isInt({ min: 18, max: 130 })
+    .withMessage('Age must be between 18 and 130')
     .toInt(),
+
+  body('owner', 'Owner is required')
+    .notEmpty()
+    .bail()
+    .isMongoId()
+    .withMessage('Must be a valid MongoDB ObjectId'),
 
   validarResultados,
   agentController.add
@@ -262,20 +270,25 @@ router.put('/agents/:id',
 
   body('age')
     .optional()
-    .isInt({ min: 0 })
-    .withMessage('Age must be a non-negative integer')
+    .isInt({ min: 18, max: 130 })
+    .withMessage('Age must be between 18 and 130')
     .toInt(),
 
-  // Require at least one field to update
+  body('owner')  // ✅ Añadir validación de owner en PUT
+    .optional()
+    .isMongoId()
+    .withMessage('Must be a valid MongoDB ObjectId'),
+
   body()
     .custom((value, { req }) => {
       const hasField =
         req.body.name !== undefined ||
         req.body.email !== undefined ||
-        req.body.age !== undefined;
+        req.body.age !== undefined ||
+        req.body.owner !== undefined;  // ✅ Añadir owner
 
       if (!hasField) {
-        throw new Error('At least one field (name, email, age) must be provided');
+        throw new Error('At least one field (name, email, age, owner) must be provided');
       }
       return true;
     }),

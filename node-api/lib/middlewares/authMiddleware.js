@@ -46,3 +46,15 @@ export function filterFirefoxDANGEROUS(req, res, next) {
   next();
 };
 */
+
+export function guard(req, res, next) {
+  const redirect = req.url;
+
+  // ✅ Verificar si hay sesión activa
+  if (!req.session || !req.session.userId) {
+    return res.redirect('/login?redir=' + encodeURIComponent(redirect));
+  }
+  
+  // ✅ Si hay sesión, continuar
+  next();
+}

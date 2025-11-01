@@ -35,18 +35,14 @@ sofia.saluda();
 console.log(pedro instanceof Persona);
 console.log(sofia instanceof Estudiante);
 
-
-
 class Jugador   {
   chuta(){
     console.log(`${this.nombre} chuto con fuerza !!!`)
   }
-}
-
+};
 
 //En js la herecia doble no existe
 // class Pedro extends Estudiante, Jugador {}
-
 // TODO: Hay una forma de heredar de varias clases ?????
 
 // / Opción 1 (La más pura para copiar el método):
@@ -56,7 +52,7 @@ pedro.chuta = chutaMethod;
 // Opción 2 (La asignación directa de la función, la más sencilla y compatible):
 sofia.chuta = function() {
     // Aquí invocamos la lógica del método chuta de la clase Jugador,
-    // asegurando que 'this' se refiere a 'pedro'.
+    // asegurando que 'this' se refiere a 'sofia'.
     Jugador.prototype.chuta.call(this);
 };
 
@@ -65,7 +61,7 @@ console.log(pedro);
 pedro.saluda();  // Heredado de Persona
 pedro.chuta();
 sofia.saluda();
-sofia.chuta() ;  // ¡Ahora sí funciona!;
+sofia.chuta() 
 
 console.log(pedro instanceof Persona); // true
 console.log(pedro instanceof Estudiante); // true

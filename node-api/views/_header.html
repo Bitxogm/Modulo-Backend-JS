@@ -1,0 +1,84 @@
+
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title><%= appName %></title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <style>
+      body {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      .content {
+        flex: 1;
+      }
+      footer {
+        margin-top: auto;
+      }
+    </style>
+  </head>
+  <body style="margin-top: 24px;">
+    
+    <!-- Banner de entorno (solo en desarrollo) -->
+    <% if (env !== 'production') { %>
+      <%- include('_environment.html') %>
+    <% } %>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg bg-body-tertiary">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="/">
+          <strong><%= appName %></strong>
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <!-- Links de navegación (izquierda) -->
+          <ul class="navbar-nav me-auto">
+            <li class="nav-item">
+              <a class="nav-link <%= currentPath === '/' ? 'active' : '' %>" href="/">Home</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link <%= currentPath === '/about' ? 'active' : '' %>" href="/about">About</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/api" target="_blank">API Docs</a>
+            </li>
+          </ul>
+          
+          <!-- Botón de login (derecha) -->
+          <div class="d-flex">
+            <!-- ✅ SIN verificación de session (simplificado) -->
+            <a class="btn btn-primary" href="/login">Login</a>
+          </div>
+        </div>
+      </div>
+    </nav>
+    
+    <!-- Inicio del contenido principal -->
+    <div class="content">
+
+      <div class="d-flex">
+  <% if (!session.userId) { %>
+    <a class="btn btn-primary" href="/login">Login</a>
+  <% } else { %>
+    <span class="navbar-text me-3">
+      👤 <%= session.userEmail %>
+    </span>
+    <button class="btn btn-outline-danger" onclick="logout()">Logout</button>
+  <% } %>
+</div>
+
+<script>
+  async function logout() {
+    const response = await fetch('/api/auth/logout', { method: 'POST' });
+    if (response.ok) {
+      window.location.href = '/login';
+    }
+  }
+</script>

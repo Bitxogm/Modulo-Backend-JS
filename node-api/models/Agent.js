@@ -24,6 +24,12 @@ const agentSchema = new Schema({
     min: [18, 'Age must be at least 18'],
     max: [130, 'Age cannot exceed 130'],
     index: true
+  },
+  owner: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: [true, 'Owner is required'],  // ✅ Añadido
+    index: true
   }
 }, {
   timestamps: true  // ✅ Añade createdAt y updatedAt

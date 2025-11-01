@@ -10,8 +10,11 @@ export const agentController = {
    */
   getAll: async (req, res) => {
     try {
-      const agents = await Agent.find();
-      
+      // ✅ Populate para mostrar datos del owner
+      const agents = await Agent
+        .find()
+        .populate('owner', 'name email');  // Solo traer name y email del owner
+
       res.status(200).json({
         success: true,
         count: agents.length,
@@ -35,7 +38,9 @@ export const agentController = {
     try {
       const data = matchedData(req);
 
-      const agent = await Agent.findById(data.id);
+      // ✅ Populate para mostrar datos del owner
+      const agent = await Agent.findById(data.id)
+        .populate('owner', 'name email');
 
       if (!agent) {
         return res.status(404).json({
@@ -64,9 +69,18 @@ export const agentController = {
    */
   add: async (req, res) => {
     try {
-      // ✅ Usar matchedData en lugar de req.body
       const data = matchedData(req);
       console.log('Datos validados:', data);
+
+      // ✅ Verificar si el owner existe
+      const { User } = await import('../models/User.js');
+      const ownerExists = await User.findById(data.owner);
+      if (!ownerExists) {
+        return res.status(404).json({
+          success: false,
+          message: 'Owner user not found'
+        });
+      }
 
       // ✅ Verificar si el email ya existe
       const existingEmail = await Agent.findOne({ email: data.email });
@@ -90,10 +104,14 @@ export const agentController = {
       const agent = new Agent({
         name: data.name,
         email: data.email,
-        age: data.age
+        age: data.age,
+        owner: data.owner  // ✅ ObjectId del User
       });
 
       const savedAgent = await agent.save();
+
+      // ✅ Populate para retornar con datos del owner
+      await savedAgent.populate('owner', 'name email');
 
       console.log('✅ Agente creado:', savedAgent._id);
 
@@ -106,7 +124,6 @@ export const agentController = {
     } catch (error) {
       console.error('[ERROR] add:', error.message);
 
-      // ✅ Manejar error de duplicado (código 11000)
       if (error.code === 11000) {
         const field = Object.keys(error.keyPattern)[0];
         return res.status(400).json({
@@ -115,7 +132,6 @@ export const agentController = {
         });
       }
 
-      // ✅ Manejar errores de validación de Mongoose
       if (error.name === 'ValidationError') {
         return res.status(400).json({
           success: false,
@@ -127,7 +143,6 @@ export const agentController = {
         });
       }
 
-      // ✅ Otros errores
       res.status(500).json({
         success: false,
         error: error.message
@@ -143,17 +158,29 @@ export const agentController = {
     try {
       const data = matchedData(req);
 
-      // Construir objeto de actualización
+      // ✅ Si se actualiza el owner, verificar que existe
+      if (data.owner) {
+        const { User } = await import('../models/User.js');
+        const ownerExists = await User.findById(data.owner);
+        if (!ownerExists) {
+          return res.status(404).json({
+            success: false,
+            message: 'Owner user not found'
+          });
+        }
+      }
+
       const updateData = {};
       if (data.name !== undefined) updateData.name = data.name;
       if (data.email !== undefined) updateData.email = data.email;
       if (data.age !== undefined) updateData.age = data.age;
+      if (data.owner !== undefined) updateData.owner = data.owner;
 
       const agent = await Agent.findByIdAndUpdate(
         data.id,
         updateData,
         { new: true, runValidators: true }
-      );
+      ).populate('owner', 'name email');  // ✅ Populate
 
       if (!agent) {
         return res.status(404).json({
@@ -172,7 +199,7 @@ export const agentController = {
 
     } catch (error) {
       console.error('[ERROR] update:', error.message);
-      
+
       if (error.code === 11000) {
         const field = Object.keys(error.keyPattern)[0];
         return res.status(400).json({
@@ -196,7 +223,8 @@ export const agentController = {
     try {
       const data = matchedData(req);
 
-      const agent = await Agent.findByIdAndDelete(data.id);
+      const agent = await Agent.findByIdAndDelete(data.id)
+        .populate('owner', 'name email');  // ✅ Populate
 
       if (!agent) {
         return res.status(404).json({

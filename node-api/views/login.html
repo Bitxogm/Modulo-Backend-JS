@@ -1,0 +1,129 @@
+<%- include('_header.html') %>
+
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+          <h4 class="mb-0">🔐 Iniciar Sesión</h4>
+        </div>
+        <div class="card-body">
+          
+          <!-- Alerta de errores -->
+          <div id="errorAlert" class="alert alert-danger d-none" role="alert"></div>
+          
+          <!-- Formulario -->
+          <form  method="POST" id="loginForm">
+            <div class="mb-3">
+              <label for="email" class="form-label">Email</label>
+              <input 
+                type="email" 
+                class="form-control" 
+                id="email" 
+                name="email"
+                value="<%= email %>"
+                aria-describedby="emailHelp"
+                placeholder="user@example.com"
+                required
+              >
+            </div>
+            
+            <div class="mb-3">
+              <label for="password" class="form-label">Contraseña</label>
+              <input 
+                type="password" 
+                class="form-control" 
+                id="password" 
+                name="password"
+                placeholder="Secreto123!"
+                required
+              >
+            </div>
+            
+            <div class="d-grid">
+              <button type="submit" class="btn btn-primary btn-lg">
+                Iniciar Sesión
+              </button>
+            </div>
+          </form>
+          
+          <hr class="my-4">
+          
+          <!-- Credenciales de prueba -->
+          <div class="alert alert-info mb-0" role="alert">
+            <strong>🔑 Credenciales de prueba:</strong>
+            <ul class="mb-0 mt-2">
+              <li><code>user@example.com</code> / <code>Secreto123!</code></li>
+              <li><code>admin@example.com</code> / <code>Admin123!</code></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Manejo del formulario de login
+  document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const errorAlert = document.getElementById('errorAlert');
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    
+    // Ocultar errores previos
+    errorAlert.classList.add('d-none');
+    
+    // Deshabilitar botón mientras procesa
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Cargando...';
+    
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email, password })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Login exitoso
+        errorAlert.classList.remove('d-none', 'alert-danger');
+        errorAlert.classList.add('alert-success');
+        errorAlert.textContent = '✅ Login exitoso! Redirigiendo...';
+        
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 1500);
+        
+      } else {
+        // Login fallido
+        errorAlert.textContent = '❌ ' + data.message;
+        errorAlert.classList.remove('d-none');
+        
+        // Rehabilitar botón
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Iniciar Sesión';
+      }
+      
+    } catch (error) {
+      errorAlert.textContent = '❌ Error de conexión: ' + error.message;
+      errorAlert.classList.remove('d-none');
+      
+      // Rehabilitar botón
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Iniciar Sesión';
+    }
+  });
+</script>
+
+<%- include('_footer.html') %>
+
+
+

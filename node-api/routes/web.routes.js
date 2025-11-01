@@ -1,4 +1,7 @@
 import express from 'express';
+import { loginController } from '../controllers/loginController.js';
+import { guard } from '../lib/middlewares/authMiddleware.js';
+
 
 export const router = express.Router();
 
@@ -19,10 +22,14 @@ router.get('/welcome', (req, res, next) => {
 });
 
 router.get('/about', (req, res, next) => {
-  res.status(200).send('Welcome to Keepcoding!');
+  // res.status(200).send('Welcome to Keepcoding!');
+  res.render('about.html', {
+    title: 'About Page',
+    message: 'Welcome to Keepcoding!',
+  });
 });
 
-router.get('/', (req, res, next) => {
+router.get('/', guard, (req, res, next) => {
   console.table(req.headers)
   res.render('home.html', {
     title: 'Otaku & KeepCoding Web Bootcamp XIX',
@@ -67,4 +74,6 @@ router.get('/error500', (req, res, next) => {
   next(err);
 });
 
-
+router.get('/login', loginController.index);
+router.post('/login', loginController.postLogin);
+router.get('/logout', loginController.logout);
